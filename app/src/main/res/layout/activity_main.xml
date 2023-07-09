@@ -4,6 +4,35 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity2">
+    tools:context=".MainActivity">
+
+    <EditText
+        android:id="@+id/national_id"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="30dp"
+        android:layout_marginBottom="20dp"
+        android:gravity="center"
+        android:hint="Enter your national ID"
+        android:inputType="number"
+        android:maxLength="14"
+        android:padding="15dp"
+        android:textColor="@color/white"
+        android:textSize="22sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <Button
+        android:id="@+id/enter_national_id"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_margin="20dp"
+        android:paddingHorizontal="30dp"
+        android:paddingVertical="15dp"
+        android:text="submit"
+        android:textSize="20sp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/national_id" />
 
 </androidx.constraintlayout.widget.ConstraintLayout>

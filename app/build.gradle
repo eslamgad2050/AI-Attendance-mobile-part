@@ -1,8 +1,28 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id 'com.google.protobuf' version '0.9.1'
 }
-
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:3.22.3"
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.56.0'
+        }
+    }
+    generateProtoTasks {
+        all().each { task ->
+            task.builtins {
+                java { option 'lite' }
+            }
+            task.plugins {
+                grpc { option 'lite' }
+            }
+        }
+    }
+}
 android {
     namespace 'eslam.gad.attendenceapp'
     compileSdk 33
@@ -47,6 +67,23 @@ android {
 }
 
 dependencies {
+    //datastore
+    implementation("androidx.datastore:datastore:1.0.0")
+
+    // optional - RxJava2 support
+    implementation("androidx.datastore:datastore-rxjava2:1.0.0")
+
+    // optional - RxJava3 support
+    implementation("androidx.datastore:datastore-rxjava3:1.0.0")
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+
+    // optional - RxJava2 support
+    implementation("androidx.datastore:datastore-preferences-rxjava2:1.0.0")
+
+    // optional - RxJava3 support
+    implementation("androidx.datastore:datastore-preferences-rxjava3:1.0.0")
+
+
     //fused location
     implementation 'com.google.android.gms:play-services-location:21.0.1'
 
@@ -60,6 +97,12 @@ dependencies {
     implementation "androidx.camera:camera-view:${camerax_version}"
     implementation "androidx.camera:camera-extensions:${camerax_version}"
 
+
+    // You need to build grpc-java to obtain these libraries below.
+    implementation 'io.grpc:grpc-okhttp:1.56.0' // CURRENT_GRPC_VERSION
+    implementation 'io.grpc:grpc-protobuf-lite:1.56.0' // CURRENT_GRPC_VERSION
+    implementation 'io.grpc:grpc-stub:1.56.0' // CURRENT_GRPC_VERSION
+    implementation 'org.apache.tomcat:annotations-api:6.0.53'
 
     implementation 'androidx.core:core-ktx:1.10.1'
     implementation platform('org.jetbrains.kotlin:kotlin-bom:1.8.0')

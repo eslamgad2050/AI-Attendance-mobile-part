@@ -1,22 +1,28 @@
 package eslam.gad.attendenceapp;
 
 import static android.Manifest.permission.CAMERA;
+import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
+
 import android.Manifest;
+import android.content.ContentValues;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
-import android.graphics.ImageFormat;
-import android.graphics.Rect;
-import android.graphics.YuvImage;
-import android.media.Image;
+import android.location.Location;
+
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.os.Handler;
+import android.provider.MediaStore;
 import android.util.Log;
-import android.view.Surface;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
@@ -32,25 +38,39 @@ import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.lifecycle.Lifecycle;
 
 import com.google.common.util.concurrent.ListenableFuture;
+import com.google.protobuf.ByteString;
 
 import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 
 public class Camera_activity extends AppCompatActivity {
     private ListenableFuture<ProcessCameraProvider> cameraProviderFuture;
-    boolean permission_granted = false;
     PreviewView previewView;
     String TAG = "camera_activity";
-    boolean ready_to_bind = false, photo_ready = false;
+    boolean ready_to_bind = false, photo_ready = false, permission_granted = false, in_or_out;
     ImageCapture imageCapture;
     Button take_photo, send_photo;
-    ImageView taken_image;
+    ImageView taken_image, image_done;
+    TextView text_done;
+    Bitmap image_bitmap;
+    long national_id;
+    private ManagedChannel channel;
+    Location location;
+    ConstraintLayout main_layout, assigning_layout, registered_layout;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,10 +78,22 @@ public class Camera_activity extends AppCompatActivity {
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
         setContentView(R.layout.activity_camera);
 
+        Intent intent = getIntent();
+        in_or_out = intent.getBooleanExtra("in_or_out", true);
+        double[] x = intent.getDoubleArrayExtra("location");
+        location = new Location("dummyprovider");
+        location.setLatitude(x[0]);
+        location.setLongitude(x[1]);
+
         previewView = (PreviewView) findViewById(R.id.previewView);
         take_photo = (Button) findViewById(R.id.take_photo);
         send_photo = (Button) findViewById(R.id.send_photo);
         taken_image = (ImageView) findViewById(R.id.taken_image);
+        main_layout = (ConstraintLayout) findViewById(R.id.main_constraint_layout);
+        assigning_layout = (ConstraintLayout) findViewById(R.id.assigning_layout);
+        registered_layout = (ConstraintLayout) findViewById(R.id.registered_layout);
+        image_done = (ImageView) findViewById(R.id.image_done);
+        text_done = (TextView) findViewById(R.id.text_done);
 
         get_permission();
         Log.d(TAG, "onCreate: " + this);
@@ -79,44 +111,57 @@ public class Camera_activity extends AppCompatActivity {
             }
         }, ContextCompat.getMainExecutor(this));
 
-        Toast.makeText(this, this.getLifecycle().getCurrentState().toString(), Toast.LENGTH_SHORT).show();
-        take_photo.setOnClickListener(new View.OnClickListener() {
+        national_id = getIntent().getLongExtra("national_id", 0);
+        take_photo.setOnClickListener(take_photo_listener);
+
+        send_photo.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (photo_ready) {
-                    photo_ready = false;
-                    take_photo.setText("take photo");
-                    taken_image.setVisibility(View.GONE);
-                    previewView.setVisibility(View.VISIBLE);
-                } else {
-                    photo_ready = true;
-                    Toast.makeText(Camera_activity.this, "send", Toast.LENGTH_SHORT).show();
-                    take_photo.setText("cancel");
-                    imageCapture.takePicture(ContextCompat.getMainExecutor(Camera_activity.this),
-                            new ImageCapture.OnImageCapturedCallback() {
-                                @Override
-                                public void onCaptureSuccess(@NonNull ImageProxy image) {
-                                    super.onCaptureSuccess(image);
-                                    taken_image.setImageBitmap(toBitmap(image));
-                                    Toast.makeText(Camera_activity.this, "photo have been taken", Toast.LENGTH_SHORT).show();
-                                    taken_image.setVisibility(View.VISIBLE);
-                                    previewView.setVisibility(View.GONE);
-                                }
-
-                                @Override
-                                public void onError(@NonNull ImageCaptureException exception) {
-                                    super.onError(exception);
-
-                                    Toast.makeText(Camera_activity.this, "error", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-                    );
-
-                }
+                check_grpc();
             }
         });
-
     }
+
+    View.OnClickListener take_photo_listener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (photo_ready) {
+                photo_ready = false;
+                take_photo.setText("take photo");
+                taken_image.setVisibility(View.GONE);
+                send_photo.setVisibility(View.GONE);
+                previewView.setVisibility(View.VISIBLE);
+            } else {
+                photo_ready = true;
+                take_photo.setText("cancel");
+                send_photo.setVisibility(View.VISIBLE);
+                ImageCapture.OutputFileOptions outputFileOptions =
+                        new ImageCapture.OutputFileOptions.Builder(new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "face_image.jpg")).build();
+                /*imageCapture.takePicture(outputFileOptions, ContextCompat.getMainExecutor(Camera_activity.this),
+                        new ImageCapture.OnImageSavedCallback() {
+                            @Override
+                            public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
+                                Toast.makeText(Camera_activity.this, "photo have been taken", Toast.LENGTH_SHORT).show();
+                                Uri uri = outputFileResults.getSavedUri();
+                                Bitmap bitmap = BitmapFactory.decodeFile(uri.getPath());
+                                taken_image.setImageBitmap(bitmap);
+                                taken_image.setVisibility(View.VISIBLE);
+                                previewView.setVisibility(View.GONE);
+                            }
+
+                            @Override
+                            public void onError(@NonNull ImageCaptureException exception) {
+
+                            }
+                        }
+                );*/
+                image_bitmap = previewView.getBitmap();
+                taken_image.setImageBitmap(image_bitmap);
+                taken_image.setVisibility(View.VISIBLE);
+                previewView.setVisibility(View.GONE);
+            }
+        }
+    };
 
     void bindPreview(@NonNull ProcessCameraProvider cameraProvider) {
         Log.d(TAG, "bindPreview: " + this);
@@ -125,27 +170,19 @@ public class Camera_activity extends AppCompatActivity {
                 .requireLensFacing(CameraSelector.LENS_FACING_FRONT).build();
         preview.setSurfaceProvider(previewView.getSurfaceProvider());
         Camera camera;
-
-        imageCapture = new ImageCapture.Builder().setTargetRotation(Surface.ROTATION_0).build();
-
+        imageCapture = new ImageCapture.Builder().setTargetRotation(getWindowManager().getDefaultDisplay().getRotation()).build();
         if (this.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.STARTED))
             camera = cameraProvider.bindToLifecycle(this, cameraSelector, imageCapture, preview);
 
     }
 
-    private Bitmap toBitmap(ImageProxy image) {
-        ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
-        byteBuffer.rewind();
-        byte[] bytes = new byte[byteBuffer.capacity()];
-        byteBuffer.get(bytes);
-        byte[] clonedBytes = bytes.clone();
-        return BitmapFactory.decodeByteArray(clonedBytes, 0, clonedBytes.length);
-    }
 
     void get_permission() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
                 != PackageManager.PERMISSION_GRANTED && ActivityCompat.
                 checkSelfPermission(this, WRITE_EXTERNAL_STORAGE) != PackageManager.
+                PERMISSION_GRANTED && ActivityCompat.
+                checkSelfPermission(this, READ_EXTERNAL_STORAGE) != PackageManager.
                 PERMISSION_GRANTED) {
             ActivityResultLauncher<String[]> locationPermissionRequest =
                     registerForActivityResult(new ActivityResultContracts
@@ -154,7 +191,9 @@ public class Camera_activity extends AppCompatActivity {
                                         CAMERA, false);
                                 Boolean coarseLocationGranted = result.getOrDefault(
                                         WRITE_EXTERNAL_STORAGE, false);
-                                if (fineLocationGranted != null && fineLocationGranted) {
+                                Boolean read_image = result.getOrDefault(
+                                        READ_EXTERNAL_STORAGE, false);
+                                if (read_image && fineLocationGranted != null && fineLocationGranted) {
                                     // Precise location access granted.
                                     permission_granted = true;
                                 } else if (coarseLocationGranted != null && coarseLocationGranted) {
@@ -173,4 +212,129 @@ public class Camera_activity extends AppCompatActivity {
         }
 
     }
+
+    private Bitmap toBitmap(ImageProxy image) {
+        ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
+        byteBuffer.rewind();
+        byte[] bytes = new byte[byteBuffer.capacity()];
+        byteBuffer.get(bytes);
+        byte[] clonedBytes = bytes.clone();
+        return BitmapFactory.decodeByteArray(clonedBytes, 0, clonedBytes.length);
+    }
+
+    void write_to_external_storage(File f) {
+        File path = this.getExternalFilesDir(null);
+        File file = new File(path, "my-file-name.txt");
+        String text = "Hello world!";
+        try {
+            FileOutputStream fos = new FileOutputStream(file);
+            fos.write(text.getBytes());
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void capturePhoto() {
+        long timeStamp = System.currentTimeMillis();
+        ContentValues contentValues = new ContentValues();
+        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, timeStamp);
+        contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
+        imageCapture.takePicture(new ImageCapture.OutputFileOptions.Builder(
+                        getContentResolver(),
+                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                        contentValues).build(),
+                ContextCompat.getMainExecutor(this),
+                new ImageCapture.OnImageSavedCallback() {
+                    @Override
+                    public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
+                        Uri uri = outputFileResults.getSavedUri();
+                        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
+                        intent.setData(uri);
+                        sendBroadcast(intent);
+                    }
+
+                    @Override
+                    public void onError(@NonNull ImageCaptureException exception) {
+                        Toast.makeText(Camera_activity.this, "Error", Toast.LENGTH_SHORT).show();
+                    }
+                });
+    }
+
+    void check_grpc() {
+        main_layout.setVisibility(View.GONE);
+        registered_layout.setVisibility(View.GONE);
+        assigning_layout.setVisibility(View.VISIBLE);
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                channel = ManagedChannelBuilder.forAddress("192.168.137.142", 50051).usePlaintext().build();
+                FaceIdAiGrpc.FaceIdAiBlockingStub stub = FaceIdAiGrpc.newBlockingStub(channel);
+                FaceIdAiData.EmployeeId employeeId = FaceIdAiData.EmployeeId.newBuilder().setId(national_id).build();
+                ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                image_bitmap.compress(Bitmap.CompressFormat.WEBP, 100, stream);
+                byte[] byteArray = stream.toByteArray();
+                ByteString byte_string = ByteString.copyFrom(byteArray);
+                FaceIdAiData.Image image = FaceIdAiData.Image.newBuilder().setEncodedImage(byte_string).build();
+                FaceIdAiData.EmployeeInfo employeeInfo = FaceIdAiData.EmployeeInfo.newBuilder().setImage(image).setId(employeeId).build();
+                FaceIdAiData.RemoteEmployee remoteEmployee = FaceIdAiData.RemoteEmployee.newBuilder().setLatitude(location.getLatitude())
+                        .setLongitude(location.getLongitude()).setInOrOut(in_or_out).setEmployeeInfo(employeeInfo).build();
+                try {
+                    Toast.makeText(Camera_activity.this, "test try and catch", Toast.LENGTH_LONG).show();
+                    FaceIdAiData.RemoteEmployeeState remoteEmployeeState = stub.withDeadlineAfter(10, TimeUnit.SECONDS).registerRemoteEmployee(remoteEmployee);
+                    Toast.makeText(Camera_activity.this, "" + remoteEmployeeState.getState().toString(), Toast.LENGTH_LONG).show();
+                    if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_SUCCESS) {
+                        registered_layout.setVisibility(View.VISIBLE);
+                        main_layout.setVisibility(View.GONE);
+                        assigning_layout.setVisibility(View.GONE);
+                    } else if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_ERROR) {
+                        image_done.setImageResource(R.drawable.baseline_error_24);
+                        text_done.setText("Error Happened");
+                        registered_layout.setVisibility(View.VISIBLE);
+                        main_layout.setVisibility(View.GONE);
+                        assigning_layout.setVisibility(View.GONE);
+
+                    } else if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_INVALID_LOCATION) {
+                        image_done.setImageResource(R.drawable.baseline_wrong_location_24);
+                        text_done.setText("Invalid Location");
+                        registered_layout.setVisibility(View.VISIBLE);
+                        main_layout.setVisibility(View.GONE);
+                        assigning_layout.setVisibility(View.GONE);
+
+
+                    } else if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_NON_MATCHING_ID) {
+                        image_done.setImageResource(R.drawable.baseline_person_off_24);
+                        text_done.setText("Non Matching ID");
+                        registered_layout.setVisibility(View.VISIBLE);
+                        main_layout.setVisibility(View.GONE);
+                        assigning_layout.setVisibility(View.GONE);
+
+
+                    } else if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_UNSPECIFIED) {
+                        image_done.setImageResource(R.drawable.baseline_error_24);
+                        text_done.setText("Error Happened");
+                        registered_layout.setVisibility(View.VISIBLE);
+                        main_layout.setVisibility(View.GONE);
+                        assigning_layout.setVisibility(View.GONE);
+                    } else if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_INVALID_TIME) {
+                        image_done.setImageResource(R.drawable.baseline_timer_off_24);
+                        text_done.setText("Invalid Time");
+                        registered_layout.setVisibility(View.VISIBLE);
+                        main_layout.setVisibility(View.GONE);
+                        assigning_layout.setVisibility(View.GONE);
+
+
+                    }
+                } catch (Exception e) {
+                    Toast.makeText(Camera_activity.this, "error: " + e, Toast.LENGTH_LONG).show();
+                    main_layout.setVisibility(View.VISIBLE);
+                    registered_layout.setVisibility(View.GONE);
+                    assigning_layout.setVisibility(View.GONE);
+                }
+            }
+        };
+        Handler handler = new Handler();
+        handler.post(runnable);
+    }
+
 }

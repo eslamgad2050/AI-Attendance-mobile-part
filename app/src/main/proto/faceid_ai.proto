@@ -1,0 +1,81 @@
+syntax = "proto3";
+
+package rpc;
+
+option java_package = "eslam.gad.attendenceapp";
+option java_multiple_files = false;
+option java_outer_classname = "FaceIdAiData";
+
+service FaceIdAi {
+    rpc GetFeatureVector(Image) returns (FaceEmbedding) {}
+
+    rpc SetupService(EmployeeId) returns (Status) {}
+    rpc GetAllowedDuration(Null) returns (Time) {}
+    rpc BeAtYourDesk(EmployeeInfo) returns (Status) {}
+    rpc RecordTimeData(TimeData) returns (Null) {}
+
+    rpc RegisterRemoteEmployee(RemoteEmployee) returns (RemoteEmployeeState) {}
+}
+
+message RemoteEmployeeState {
+    enum State {
+        STATE_UNSPECIFIED = 0;
+        STATE_ERROR = 1;  // Any other error
+        STATE_SUCCESS = 2;
+        STATE_NON_MATCHING_ID = 3;
+        STATE_INVALID_LOCATION = 4;
+        STATE_INVALID_TIME = 5;
+    }
+    State state = 1;
+}
+
+message RemoteEmployee {
+    EmployeeInfo employee_info = 1;
+    double longitude = 2;
+    double latitude = 3;
+    bool in_or_out = 4;
+}
+
+message Time {
+    uint32 time = 1;
+}
+
+message Null {}
+
+message EmployeeId {
+    uint64 id = 1;
+}
+
+message EmployeeInfo {
+    EmployeeId id = 1;
+    Image image = 2;
+}
+
+message Status {
+    bool status = 1;
+}
+
+message TimeData {
+    EmployeeId id = 1;
+    bool is_absent = 2;
+}
+
+message Image {
+    bytes encoded_image = 1;
+}
+
+message FaceEmbedding {
+    FeatureVector feature_vector = 1;
+    enum State {
+        STATE_UNSPECIFIED = 0;
+        STATE_SUCCESS = 1;
+        STATE_NOT_FOUND = 2;
+        STATE_MULTIFACE = 3;
+        STATE_ERROR = 4;  // Can be further expanded into error types
+    }
+    State vector_state = 2;
+}
+
+message FeatureVector {
+    repeated float vector = 1;
+}
