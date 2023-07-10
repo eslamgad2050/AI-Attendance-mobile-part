@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/background_color"
     tools:context=".Camera_activity">
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -18,6 +19,7 @@
             android:layout_height="match_parent" />
 
         <ImageView
+
             android:id="@+id/taken_image"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
@@ -37,8 +39,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
-            android:paddingHorizontal="20dp"
-            android:paddingVertical="20dp"
+            android:background="@drawable/round_button"
+            android:paddingHorizontal="25dp"
+            android:paddingVertical="15dp"
             android:text="take photo"
             android:textSize="18sp"
             app:layout_constraintBottom_toBottomOf="parent"
@@ -50,8 +53,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_margin="15dp"
-            android:paddingHorizontal="20dp"
-            android:paddingVertical="20dp"
+            android:background="@drawable/round_button"
+            android:paddingHorizontal="25dp"
+            android:paddingVertical="15dp"
             android:text="Send Photo"
             android:textSize="18sp"
             android:visibility="gone"
@@ -70,8 +74,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center"
-            android:text="assigning"
-            android:textColor="@color/white"
+            android:text="Registering"
+            android:textColor="@color/text_color"
             android:textSize="23sp"
             app:layout_constraintBottom_toTopOf="@+id/p"
             app:layout_constraintTop_toTopOf="parent" />
@@ -96,7 +100,7 @@
             android:id="@+id/image_done"
             android:layout_width="250dp"
             android:layout_height="250dp"
-            android:layout_marginBottom="100dp"
+            android:layout_marginBottom="250dp"
             android:src="@drawable/baseline_cloud_done_24"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -108,11 +112,27 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="You are Registered"
-            android:textColor="@color/white"
+            android:textColor="@color/text_color"
             android:textSize="25sp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@id/image_done" />
+
+        <Button
+            android:id="@+id/retry"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_margin="80dp"
+            android:background="@drawable/round_button"
+            android:paddingHorizontal="25dp"
+            android:paddingVertical="15dp"
+            android:text="ok"
+            android:textColor="@color/text_color"
+            android:textSize="20sp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/text_done" />
     </androidx.constraintlayout.widget.ConstraintLayout>
 
 

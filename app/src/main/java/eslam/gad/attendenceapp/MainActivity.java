@@ -1,7 +1,7 @@
 package eslam.gad.attendenceapp;
 
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.compose.foundation.interaction.DragInteraction;
 import androidx.datastore.preferences.core.MutablePreferences;
 import androidx.datastore.preferences.core.Preferences;
 import androidx.datastore.preferences.core.PreferencesKeys;
@@ -9,6 +9,8 @@ import androidx.datastore.preferences.rxjava3.RxPreferenceDataStoreBuilder;
 import androidx.datastore.rxjava3.RxDataStore;
 
 import android.content.Intent;
+import android.graphics.Color;
+import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -29,7 +31,8 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
+        ActionBar bar = getSupportActionBar();
+        bar.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.background_color_dark,getTheme())));
         national_id_edit_text = (EditText) findViewById(R.id.national_id);
         submit = (Button) findViewById(R.id.enter_national_id);
         submit.setOnClickListener(submit_id);
@@ -44,13 +47,13 @@ public class MainActivity extends AppCompatActivity {
             return prefs.get(national_id);
         });
         String s = national_id_flow.blockingFirst();
-        if (s.length() == 14) {
-            Intent intent = new Intent(MainActivity.this, Location_activity.class);
-            intent.putExtra("national_id", Long.parseLong(s));
-            dataStore.dispose();
-            this.finish();
-            startActivity(intent);
-        }
+//        if (s.length() == 14) {
+//            Intent intent = new Intent(MainActivity.this, Location_activity.class);
+//            intent.putExtra("national_id", Long.parseLong(s));
+//            dataStore.dispose();
+//            this.finish();
+//            startActivity(intent);
+//        }
 
         national_id_edit_text.setText(s);
 

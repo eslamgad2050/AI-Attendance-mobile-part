@@ -25,6 +25,7 @@ message RemoteEmployeeState {
         STATE_NON_MATCHING_ID = 3;
         STATE_INVALID_LOCATION = 4;
         STATE_INVALID_TIME = 5;
+        STATE_NON_MATCHING_FACE = 6;
     }
     State state = 1;
 }

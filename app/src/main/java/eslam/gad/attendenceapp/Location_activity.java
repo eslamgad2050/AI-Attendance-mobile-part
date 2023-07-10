@@ -8,6 +8,7 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.app.AppCompatDelegate;
 import androidx.core.app.ActivityCompat;
@@ -15,6 +16,7 @@ import androidx.core.app.ActivityCompat;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
+import android.graphics.drawable.ColorDrawable;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
@@ -58,9 +60,9 @@ public class Location_activity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
-//        getSupportActionBar().hide();
         setContentView(R.layout.activity_location);
-
+        ActionBar bar = getSupportActionBar();
+        bar.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.background_color_dark, getTheme())));
         check_settings();
         get_permission();
         Handler handler = new Handler();

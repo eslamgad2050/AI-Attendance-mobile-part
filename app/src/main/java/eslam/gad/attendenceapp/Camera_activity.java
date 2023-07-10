@@ -63,13 +63,14 @@ public class Camera_activity extends AppCompatActivity {
     String TAG = "camera_activity";
     boolean ready_to_bind = false, photo_ready = false, permission_granted = false, in_or_out;
     ImageCapture imageCapture;
-    Button take_photo, send_photo;
+    Button take_photo, send_photo, retry;
     ImageView taken_image, image_done;
     TextView text_done;
     Bitmap image_bitmap;
     long national_id;
     private ManagedChannel channel;
     Location location;
+    boolean do_retry = true;
     ConstraintLayout main_layout, assigning_layout, registered_layout;
 
     @Override
@@ -77,6 +78,7 @@ public class Camera_activity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO);
         setContentView(R.layout.activity_camera);
+        getSupportActionBar().hide();
 
         Intent intent = getIntent();
         in_or_out = intent.getBooleanExtra("in_or_out", true);
@@ -94,6 +96,7 @@ public class Camera_activity extends AppCompatActivity {
         registered_layout = (ConstraintLayout) findViewById(R.id.registered_layout);
         image_done = (ImageView) findViewById(R.id.image_done);
         text_done = (TextView) findViewById(R.id.text_done);
+        retry = (Button) findViewById(R.id.retry);
 
         get_permission();
         Log.d(TAG, "onCreate: " + this);
@@ -120,6 +123,7 @@ public class Camera_activity extends AppCompatActivity {
                 check_grpc();
             }
         });
+        retry.setOnClickListener(retry_listener);
     }
 
     View.OnClickListener take_photo_listener = new View.OnClickListener() {
@@ -128,12 +132,14 @@ public class Camera_activity extends AppCompatActivity {
             if (photo_ready) {
                 photo_ready = false;
                 take_photo.setText("take photo");
+                take_photo.setBackgroundResource(R.drawable.round_button);
                 taken_image.setVisibility(View.GONE);
                 send_photo.setVisibility(View.GONE);
                 previewView.setVisibility(View.VISIBLE);
             } else {
                 photo_ready = true;
                 take_photo.setText("cancel");
+                take_photo.setBackgroundResource(R.drawable.cancel_button);
                 send_photo.setVisibility(View.VISIBLE);
                 ImageCapture.OutputFileOptions outputFileOptions =
                         new ImageCapture.OutputFileOptions.Builder(new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "face_image.jpg")).build();
@@ -268,7 +274,7 @@ public class Camera_activity extends AppCompatActivity {
         Runnable runnable = new Runnable() {
             @Override
             public void run() {
-                channel = ManagedChannelBuilder.forAddress("192.168.137.142", 50051).usePlaintext().build();
+                channel = ManagedChannelBuilder.forAddress("172.31.47.225", 50051).usePlaintext().build();
                 FaceIdAiGrpc.FaceIdAiBlockingStub stub = FaceIdAiGrpc.newBlockingStub(channel);
                 FaceIdAiData.EmployeeId employeeId = FaceIdAiData.EmployeeId.newBuilder().setId(national_id).build();
                 ByteArrayOutputStream stream = new ByteArrayOutputStream();
@@ -280,10 +286,13 @@ public class Camera_activity extends AppCompatActivity {
                 FaceIdAiData.RemoteEmployee remoteEmployee = FaceIdAiData.RemoteEmployee.newBuilder().setLatitude(location.getLatitude())
                         .setLongitude(location.getLongitude()).setInOrOut(in_or_out).setEmployeeInfo(employeeInfo).build();
                 try {
-                    Toast.makeText(Camera_activity.this, "test try and catch", Toast.LENGTH_LONG).show();
-                    FaceIdAiData.RemoteEmployeeState remoteEmployeeState = stub.withDeadlineAfter(10, TimeUnit.SECONDS).registerRemoteEmployee(remoteEmployee);
+                    do_retry = true;
+                    retry.setText("Retry");
+                    FaceIdAiData.RemoteEmployeeState remoteEmployeeState = stub.withDeadlineAfter(20, TimeUnit.SECONDS).registerRemoteEmployee(remoteEmployee);
                     Toast.makeText(Camera_activity.this, "" + remoteEmployeeState.getState().toString(), Toast.LENGTH_LONG).show();
                     if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_SUCCESS) {
+                        do_retry = false;
+                        retry.setText("OK");
                         registered_layout.setVisibility(View.VISIBLE);
                         main_layout.setVisibility(View.GONE);
                         assigning_layout.setVisibility(View.GONE);
@@ -322,13 +331,22 @@ public class Camera_activity extends AppCompatActivity {
                         registered_layout.setVisibility(View.VISIBLE);
                         main_layout.setVisibility(View.GONE);
                         assigning_layout.setVisibility(View.GONE);
-
-
+                    } else if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_NON_MATCHING_FACE) {
+                        image_done.setImageResource(R.drawable.baseline_person_off_24);
+                        text_done.setText("Non Matching Face");
+                        registered_layout.setVisibility(View.VISIBLE);
+                        main_layout.setVisibility(View.GONE);
+                        assigning_layout.setVisibility(View.GONE);
                     }
+
                 } catch (Exception e) {
+                    do_retry = true;
                     Toast.makeText(Camera_activity.this, "error: " + e, Toast.LENGTH_LONG).show();
-                    main_layout.setVisibility(View.VISIBLE);
-                    registered_layout.setVisibility(View.GONE);
+                    Log.d(TAG, "run: exception" + e);
+                    image_done.setImageResource(R.drawable.baseline_error_24);
+                    text_done.setText("Connection Error");
+                    registered_layout.setVisibility(View.VISIBLE);
+                    main_layout.setVisibility(View.GONE);
                     assigning_layout.setVisibility(View.GONE);
                 }
             }
@@ -337,4 +355,17 @@ public class Camera_activity extends AppCompatActivity {
         handler.post(runnable);
     }
 
+    View.OnClickListener retry_listener = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            if (do_retry) {
+                retry.setText("Retry");
+                main_layout.setVisibility(View.VISIBLE);
+                registered_layout.setVisibility(View.GONE);
+                assigning_layout.setVisibility(View.GONE);
+            } else {
+                Camera_activity.this.finish();
+            }
+        }
+    };
 }

@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/background_color"
     tools:context=".Location_activity">
 
     <TextView
@@ -13,7 +14,7 @@
         android:layout_marginTop="80dp"
         android:gravity="center"
         android:text="Getting location"
-        android:textColor="@color/white"
+        android:textColor="@color/text_color"
         android:textSize="27sp"
         app:layout_constraintTop_toTopOf="parent" />
 
@@ -29,12 +30,14 @@
 
     <Button
         android:id="@+id/attend"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="35dp"
         android:layout_marginBottom="150dp"
-        android:paddingHorizontal="25dp"
+        android:background="@drawable/round_button"
+        android:paddingHorizontal="15dp"
         android:paddingVertical="15dp"
-        android:text="submit attend"
+        android:text="attend"
         android:textSize="17sp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
@@ -43,12 +46,14 @@
 
     <Button
         android:id="@+id/leave"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginHorizontal="35dp"
         android:layout_marginBottom="150dp"
-        android:paddingHorizontal="25dp"
+        android:background="@drawable/round_button"
+        android:paddingHorizontal="15dp"
         android:paddingVertical="15dp"
-        android:text="submit leaving"
+        android:text="leave"
         android:textSize="17sp"
         android:visibility="gone"
         app:layout_constraintBottom_toBottomOf="parent"
