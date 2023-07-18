@@ -4,26 +4,20 @@ import static android.Manifest.permission.CAMERA;
 import static android.Manifest.permission.READ_EXTERNAL_STORAGE;
 import static android.Manifest.permission.WRITE_EXTERNAL_STORAGE;
 
-
 import android.Manifest;
-import android.content.ContentValues;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.location.Location;
 
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
-import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
@@ -33,8 +27,6 @@ import androidx.appcompat.app.AppCompatDelegate;
 import androidx.camera.core.Camera;
 import androidx.camera.core.CameraSelector;
 import androidx.camera.core.ImageCapture;
-import androidx.camera.core.ImageCaptureException;
-import androidx.camera.core.ImageProxy;
 import androidx.camera.core.Preview;
 import androidx.camera.lifecycle.ProcessCameraProvider;
 import androidx.camera.view.PreviewView;
@@ -48,9 +40,6 @@ import com.google.protobuf.ByteString;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
@@ -110,7 +99,7 @@ public class Camera_activity extends AppCompatActivity {
             } catch (ExecutionException | InterruptedException e) {
                 // No errors need to be handled for this Future.
                 // This should never be reached.
-                Toast.makeText(this, "did not get the cam", Toast.LENGTH_SHORT).show();
+//                Toast.makeText(this, "did not get the cam", Toast.LENGTH_SHORT).show();
             }
         }, ContextCompat.getMainExecutor(this));
 
@@ -143,24 +132,6 @@ public class Camera_activity extends AppCompatActivity {
                 send_photo.setVisibility(View.VISIBLE);
                 ImageCapture.OutputFileOptions outputFileOptions =
                         new ImageCapture.OutputFileOptions.Builder(new File(getExternalFilesDir(Environment.DIRECTORY_PICTURES), "face_image.jpg")).build();
-                /*imageCapture.takePicture(outputFileOptions, ContextCompat.getMainExecutor(Camera_activity.this),
-                        new ImageCapture.OnImageSavedCallback() {
-                            @Override
-                            public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
-                                Toast.makeText(Camera_activity.this, "photo have been taken", Toast.LENGTH_SHORT).show();
-                                Uri uri = outputFileResults.getSavedUri();
-                                Bitmap bitmap = BitmapFactory.decodeFile(uri.getPath());
-                                taken_image.setImageBitmap(bitmap);
-                                taken_image.setVisibility(View.VISIBLE);
-                                previewView.setVisibility(View.GONE);
-                            }
-
-                            @Override
-                            public void onError(@NonNull ImageCaptureException exception) {
-
-                            }
-                        }
-                );*/
                 image_bitmap = previewView.getBitmap();
                 taken_image.setImageBitmap(image_bitmap);
                 taken_image.setVisibility(View.VISIBLE);
@@ -219,54 +190,6 @@ public class Camera_activity extends AppCompatActivity {
 
     }
 
-    private Bitmap toBitmap(ImageProxy image) {
-        ByteBuffer byteBuffer = image.getPlanes()[0].getBuffer();
-        byteBuffer.rewind();
-        byte[] bytes = new byte[byteBuffer.capacity()];
-        byteBuffer.get(bytes);
-        byte[] clonedBytes = bytes.clone();
-        return BitmapFactory.decodeByteArray(clonedBytes, 0, clonedBytes.length);
-    }
-
-    void write_to_external_storage(File f) {
-        File path = this.getExternalFilesDir(null);
-        File file = new File(path, "my-file-name.txt");
-        String text = "Hello world!";
-        try {
-            FileOutputStream fos = new FileOutputStream(file);
-            fos.write(text.getBytes());
-            fos.close();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void capturePhoto() {
-        long timeStamp = System.currentTimeMillis();
-        ContentValues contentValues = new ContentValues();
-        contentValues.put(MediaStore.MediaColumns.DISPLAY_NAME, timeStamp);
-        contentValues.put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg");
-        imageCapture.takePicture(new ImageCapture.OutputFileOptions.Builder(
-                        getContentResolver(),
-                        MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
-                        contentValues).build(),
-                ContextCompat.getMainExecutor(this),
-                new ImageCapture.OnImageSavedCallback() {
-                    @Override
-                    public void onImageSaved(@NonNull ImageCapture.OutputFileResults outputFileResults) {
-                        Uri uri = outputFileResults.getSavedUri();
-                        Intent intent = new Intent(Intent.ACTION_MEDIA_SCANNER_SCAN_FILE);
-                        intent.setData(uri);
-                        sendBroadcast(intent);
-                    }
-
-                    @Override
-                    public void onError(@NonNull ImageCaptureException exception) {
-                        Toast.makeText(Camera_activity.this, "Error", Toast.LENGTH_SHORT).show();
-                    }
-                });
-    }
-
     void check_grpc() {
         main_layout.setVisibility(View.GONE);
         registered_layout.setVisibility(View.GONE);
@@ -289,7 +212,6 @@ public class Camera_activity extends AppCompatActivity {
                     do_retry = true;
                     retry.setText("Retry");
                     FaceIdAiData.RemoteEmployeeState remoteEmployeeState = stub.withDeadlineAfter(20, TimeUnit.SECONDS).registerRemoteEmployee(remoteEmployee);
-                    Toast.makeText(Camera_activity.this, "" + remoteEmployeeState.getState().toString(), Toast.LENGTH_LONG).show();
                     if (remoteEmployeeState.getState() == FaceIdAiData.RemoteEmployeeState.State.STATE_SUCCESS) {
                         do_retry = false;
                         retry.setText("OK");
@@ -341,7 +263,6 @@ public class Camera_activity extends AppCompatActivity {
 
                 } catch (Exception e) {
                     do_retry = true;
-                    Toast.makeText(Camera_activity.this, "error: " + e, Toast.LENGTH_LONG).show();
                     Log.d(TAG, "run: exception" + e);
                     image_done.setImageResource(R.drawable.baseline_error_24);
                     text_done.setText("Connection Error");

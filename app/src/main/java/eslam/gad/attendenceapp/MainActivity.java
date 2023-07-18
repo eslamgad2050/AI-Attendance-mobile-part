@@ -9,7 +9,6 @@ import androidx.datastore.preferences.rxjava3.RxPreferenceDataStoreBuilder;
 import androidx.datastore.rxjava3.RxDataStore;
 
 import android.content.Intent;
-import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.view.View;
@@ -32,9 +31,11 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         ActionBar bar = getSupportActionBar();
-        bar.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.background_color_dark,getTheme())));
+        bar.setBackgroundDrawable(new ColorDrawable(getResources().getColor(R.color.background_color_dark, getTheme())));
+
         national_id_edit_text = (EditText) findViewById(R.id.national_id);
         submit = (Button) findViewById(R.id.enter_national_id);
+
         submit.setOnClickListener(submit_id);
         dataStore = new RxPreferenceDataStoreBuilder(this, /*name=*/ "access").build();
         national_id = PreferencesKeys.stringKey("national_id");
@@ -47,17 +48,8 @@ public class MainActivity extends AppCompatActivity {
             return prefs.get(national_id);
         });
         String s = national_id_flow.blockingFirst();
-//        if (s.length() == 14) {
-//            Intent intent = new Intent(MainActivity.this, Location_activity.class);
-//            intent.putExtra("national_id", Long.parseLong(s));
-//            dataStore.dispose();
-//            this.finish();
-//            startActivity(intent);
-//        }
-
         national_id_edit_text.setText(s);
-
-
+        dataStore.dispose();
     }
 
     View.OnClickListener submit_id = new View.OnClickListener() {
@@ -70,7 +62,6 @@ public class MainActivity extends AppCompatActivity {
             }
             Single<Preferences> updateResult = dataStore.updateDataAsync(prefsIn -> {
                 MutablePreferences mutablePreferences = prefsIn.toMutablePreferences();
-                String currentInt = prefsIn.get(national_id);
                 mutablePreferences.set(national_id, s);
                 return Single.just(mutablePreferences);
             });
